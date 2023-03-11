@@ -1,7 +1,15 @@
 CC = gcc
 
 FLAGS = -Wall -Wextra -Werror -std=c11 -fanalyzer -pedantic
-ADDITIONAL_FLAGS = -lcheck -lsubunit -lm
+
+ADDITIONAL_FLAGS = -lcheck
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	ADDITIONAL_FLAGS += -lsubunit -lm
+endif
+#ifeq ($(UNAME_S),Darwin)
+#	something for MACOS
+#endif
 
 SRC_C_FILES = s21_add.c \
 			  s21_calc.c \
@@ -22,12 +30,11 @@ RANDOM_TESTS_FILE = random_format_tests.c
 TEST_H_FILES = test_commons.h
 TEST_TARGET  = s21_test
 
-OBJ = $(patsubst %.c, %.o, $(SRC_C_FILES))
 LIB = s21_string.a
 
 REPORT_DIR = report
 
-all: clean test
+all: clean gcov_report $(LIB) test
 
 test: $(SRC_C_FILES) $(SRC_H_FILES)
 	cp ../materials/linters/.clang-format .
@@ -50,12 +57,11 @@ gcov_report:
 	genhtml -o report $(TEST_TARGET).info
 	rm *.gcda *.gcno *.info
 
-$(LIB): $(OBJ)
-	ar -rc $(LIB) $(OBJ)
+$(LIB):
+	$(CC) -c $(SRC_C_FILES) $(ADDITIONAL_FLAGS)
+	ar rcv $(LIB) *.o
+	ranlib $(LIB)
 	rm *.o
-
-%.o : %.c
-	$(CC) $(FLAGS) -c $< -o $@ $(ADDITIONAL_FLAGS)
 
 clean_test:
 	rm -f $(TEST_TARGET)
@@ -69,4 +75,7 @@ clean_lib:
 clean_obj:
 	rm -f *.o
 
-clean: clean_test clean_report clean_lib clean_obj
+clean_gcov:
+	rm -f *.gc*
+
+clean: clean_test clean_report clean_lib clean_obj clean_gcov
